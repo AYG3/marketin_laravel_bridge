@@ -47,7 +47,7 @@ Marketin Laravel Bridge is a lightweight helper that drops the Marketin JavaScri
 ## Quick start
 
 ```bash
-composer require marketin/laravel-bridge
+composer require ayg3/marketin-laravel-bridge
 
 # In your base layout <head> tag:
 @marketinScripts()
@@ -62,7 +62,7 @@ Set the required IDs (brand, campaign, affiliate) via environment variables befo
 ### 1. Install the package
 
 ```bash
-composer require marketin/laravel-bridge
+composer require ayg3/marketin-laravel-bridge
 ```
 
 The service provider is auto-discovered; no manual registration is necessary.
