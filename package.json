@@ -1,0 +1,13 @@
+{
+  "name": "@marketin/laravel-bridge-assets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Build tooling for the Marketin Laravel bridge assets.",
+  "scripts": {
+    "dev": "vite --watch",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

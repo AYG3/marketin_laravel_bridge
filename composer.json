@@ -1,0 +1,44 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "ayg3/marketin-laravel-bridge",
+    "type": "library",
+    "description": "Marketin SDK bridge package for Laravel applications.",
+    "keywords": [
+        "laravel",
+        "marketin",
+        "sdk",
+        "tracking"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Marketin\\LaravelBridge\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Marketin\\LaravelBridge\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "@php -r \"echo 'No test suite configured.'.PHP_EOL;\""
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Marketin\\LaravelBridge\\MarketinServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
