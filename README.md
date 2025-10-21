@@ -29,7 +29,7 @@ Marketin Laravel Bridge is a lightweight helper that drops the Marketin JavaScri
 
 - One-line Blade directive (`@marketinScripts`) that loads the official Marketin SDK and passes a signed config payload to the bridge.
 - CDN defaults for both the SDK (`https://cdn.jsdelivr.net/gh/ayg3/sdk@latest/marketin-sdk.min.js`) and the bridge bundle—no publishing step required.
-- Environment-driven configuration so each deployment can set brand, campaign, and affiliate identifiers without touching code.
+- Environment-driven configuration so each deployment can set the required brand identifier (with optional fallbacks).
 - Optional `@marketinTracking` directive to push structured events into the data layer you already use.
 - Extensible helper that accepts per-render overrides for advanced pages or A/B tests.
 
@@ -53,7 +53,7 @@ composer require ayg3/marketin-laravel-bridge
 @marketinScripts()
 ```
 
-Set the required IDs (brand, campaign, affiliate) via environment variables before deploying.
+Set `MARKETIN_BRAND_ID` in your environment before deploying. Affiliate, campaign, and product identifiers will normally arrive via URL parameters when Marketin hands off traffic.
 
 ---
 
@@ -100,10 +100,10 @@ The package ships with `config/marketin.php`. You do not need to publish it unle
 |---------------------------------|------------------------------------------------------------------|-------------|
 | `MARKETIN_SDK_URL`              | `https://cdn.jsdelivr.net/gh/ayg3/sdk@latest/marketin-sdk.min.js` | CDN location of the Marketin SDK. |
 | `MARKETIN_BRAND_ID`             | `null`                                                           | **Required.** Your Marketin brand identifier. |
-| `MARKETIN_CAMPAIGN_ID`          | `null`                                                           | Default campaign identifier. |
-| `MARKETIN_AFFILIATE_ID`         | `null`                                                           | Default affiliate identifier. |
-| `MARKETIN_DEFAULT_CAMPAIGN_ID`  | `null`                                                           | Fallback campaign ID when URL params are absent. |
-| `MARKETIN_DEFAULT_AFFILIATE_ID` | `null`                                                           | Fallback affiliate ID when URL params are absent. |
+| `MARKETIN_CAMPAIGN_ID`          | `null`                                                           | Optional fallback campaign identifier; typical traffic supplies `cid` via URL. |
+| `MARKETIN_AFFILIATE_ID`         | `null`                                                           | Optional fallback affiliate/advocate identifier; typical traffic supplies `aid` via URL. |
+| `MARKETIN_DEFAULT_CAMPAIGN_ID`  | `null`                                                           | Secondary campaign fallback when neither URL parameters nor overrides are provided. |
+| `MARKETIN_DEFAULT_AFFILIATE_ID` | `null`                                                           | Secondary affiliate fallback when neither URL parameters nor overrides are provided. |
 | `MARKETIN_API_ENDPOINT`         | `https://api.marketin.now/api/v1`                                | REST endpoint consumed by the bridge. |
 | `MARKETIN_DEBUG`                | `false`                                                          | Enables verbose console logging. |
 | `MARKETIN_BRIDGE_URL`           | `https://cdn.jsdelivr.net/gh/ayg3/marketin_laravel_bridge@latest/dist/marketin-bridge.js` | CDN location of the Laravel bridge bundle. |
@@ -159,6 +159,98 @@ Place `@marketinTracking()` near the bottom of your layout if you want every pag
     'brandId' => config('marketin.brand_id'),
 ])
 ```
+
+### URL parameter intake
+
+The bridge inspects the page URL every time it boots. If the query string contains `aid`, `cid`, or `pid`, those values are persisted to `window.sessionStorage` (stored under the `marketinParams` key) and merged into the payload that initialises the Marketin SDK.
+
+```text
+https://example.com/product/101?pid=101&cid=3&aid=8
+```
+
+- `aid` → `affiliateId` / `advocateId`
+- `cid` → `campaignId`
+- `pid` → `productId` (consumed when `marketin:conversion` events fire)
+
+Once `@marketinScripts()` is in your base layout the bridge picks up those parameters automatically, keeps them around for later page loads (including Livewire transitions), and falls back to whatever you supplied via overrides or configuration. Effective precedence is:
+
+1. URL parameters (`aid`, `cid`, `pid`)
+2. Values passed into `@marketinScripts([...])`
+3. Defaults from `config/marketin.php` / environment variables
+
+The Marketin platform issues customer-facing links containing these parameters, so most teams leave campaign and affiliate IDs blank in their configuration. Overrides exist purely as an escape hatch for bespoke flows or testing.
+
+#### Custom query parameter names
+
+If you receive different query parameter names (for example `affiliate` instead of `aid`), normalise them before the directive runs so the bridge can still discover them. A lightweight middleware keeps the logic centralised:
+
+```php
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+
+class NormalizeMarketinParams
+{
+    public function handle($request, Closure $next)
+    {
+        $mapping = [
+            'affiliate' => 'aid',
+            'campaign' => 'cid',
+            'product' => 'pid',
+        ];
+
+        foreach ($mapping as $incoming => $expected) {
+            if ($request->query->has($incoming) && ! $request->query->has($expected)) {
+                $request->query->set($expected, $request->query($incoming));
+            }
+        }
+
+        return $next($request);
+    }
+}
+```
+
+Register the middleware in `app/Http/Kernel.php` (for example inside the `web` group) so every request presents the expected keys to the bridge. For a one-off page you can also pass overrides directly to the directive:
+
+```blade
+@marketinScripts([
+    'affiliateId' => request('affiliate'),
+    'campaignId' => request('campaign'),
+    'defaultCampaignId' => config('marketin.default_campaign_id'),
+])
+```
+
+The bridge still honours the precedence list above, so explicit overrides win whenever the canonical query parameters are missing.
+
+#### Product conversion example
+
+Here is a minimal product page that relies entirely on URL-provided identifiers. The `data-marketin-conversion` attribute emits a conversion payload, while the stored `pid` becomes the product identifier sent to Marketin.
+
+```blade
+@extends('layouts.app')
+
+@section('content')
+    <main class="product">
+        <header>
+            <h1>{{ $product->name }}</h1>
+            <p class="price">${{ number_format($product->price, 2) }}</p>
+        </header>
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            data-marketin-conversion='{"value": {{ number_format($product->price, 2, '.', '') }}, "currency": "USD"}'
+            data-marketin-product-id="{{ $product->id }}"
+        >
+            Purchase
+        </button>
+    </main>
+@endsection
+```
+
+When a visitor lands on a Marketin link such as `https://example.com/product/101?pid=101&cid=3&aid=8`, the bridge attaches the `pid`, `cid`, and `aid` captured from the URL to the conversion event fired when the button is pressed. If you omit `data-marketin-product-id`, the stored `pid` automatically becomes the product identifier.
 
 ---
 
