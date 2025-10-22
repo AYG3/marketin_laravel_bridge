@@ -180,6 +180,8 @@ Once `@marketinScripts()` is in your base layout the bridge picks up those param
 
 The Marketin platform issues customer-facing links containing these parameters, so most teams leave campaign and affiliate IDs blank in their configuration. Overrides exist purely as an escape hatch for bespoke flows or testing.
 
+Both `marketin:conversion` and `marketin:subscription` events pull the stored identifiers into their payloads before calling the Marketin SDK, so conversions and recurring revenue events stay attributed without extra code.
+
 #### Custom query parameter names
 
 If you receive different query parameter names (for example `affiliate` instead of `aid`), normalise them before the directive runs so the bridge can still discover them. A lightweight middleware keeps the logic centralised:

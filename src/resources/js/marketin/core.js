@@ -176,8 +176,30 @@ const bindMarketInEvents = () => {
 	});
 
 	subscribeTo('marketin:subscription', (detail) => {
-		logEvent('Subscription detail', detail);
-		window.MarketIn?.trackSubscription?.(detail);
+		logEvent('Subscription detail (raw)', detail);
+
+		const payload = Array.isArray(detail) ? { ...(detail[0] ?? {}) } : { ...(detail ?? {}) };
+		const storedParams = readStoredMarketInParams();
+
+		const affiliateId = parseNumericId(payload?.affiliateId) ?? parseNumericId(storedParams?.aid);
+		const campaignId = parseNumericId(payload?.campaignId) ?? parseNumericId(storedParams?.cid);
+		const productId = payload?.productId ?? storedParams?.pid ?? storedParams?.productId;
+
+		if (affiliateId !== undefined) {
+			payload.affiliateId = affiliateId;
+		}
+
+		if (campaignId !== undefined) {
+			payload.campaignId = campaignId;
+		}
+
+		if (productId !== undefined && payload.productId === undefined) {
+			payload.productId = productId;
+		}
+
+		payload.eventType = 'subscription';
+		logEvent('Subscription detail (mapped)', payload);
+		window.MarketIn?.trackConversion?.(payload);
 	});
 
 	window.__marketInEventsBound = true;
