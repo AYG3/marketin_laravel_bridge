@@ -203,7 +203,6 @@ const bindMarketInEvents = () => {
 		payload.eventType = eventType;
 
 		logEvent('Subscription detail (mapped)', payload);
-		logEvent('Subscription detail (mapped)', payload);
 		window.MarketIn?.trackConversion?.(payload);
 	});
 
