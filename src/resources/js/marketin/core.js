@@ -184,6 +184,9 @@ const bindMarketInEvents = () => {
 		const affiliateId = parseNumericId(payload?.affiliateId) ?? parseNumericId(storedParams?.aid);
 		const campaignId = parseNumericId(payload?.campaignId) ?? parseNumericId(storedParams?.cid);
 		const productId = payload?.productId ?? storedParams?.pid ?? storedParams?.productId;
+		const eventType = typeof payload.eventType === 'string' && payload.eventType.trim() !== ''
+		? payload.eventType.trim()
+		: 'subscription.created';
 
 		if (affiliateId !== undefined) {
 			payload.affiliateId = affiliateId;
@@ -197,7 +200,9 @@ const bindMarketInEvents = () => {
 			payload.productId = productId;
 		}
 
-		payload.eventType = 'subscription';
+		payload.eventType = eventType;
+
+		logEvent('Subscription detail (mapped)', payload);
 		logEvent('Subscription detail (mapped)', payload);
 		window.MarketIn?.trackConversion?.(payload);
 	});
